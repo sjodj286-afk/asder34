@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>Many Eyes — stories that find their readers</title>
+<meta name="description" content="A parallax scroll landing page: a stippled portrait turns, then dissolves into fibres as you scroll. Pure WebGL, no libraries.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Bricolage+Grotesque:opsz,wght@12..96,400;12..96,600;12..96,700&family=Hanken+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#E6E7E9;
+  --bg2:#F4F4F5;
+  --ink:#141518;
+  --muted:#5D6168;
+  --line:rgba(20,21,24,.16);
+  --head:"Bricolage Grotesque","Helvetica Neue",Arial,sans-serif;
+  --body:"Hanken Grotesk",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html{background:var(--bg)}
+body{font-family:var(--body);color:var(--ink);background:
+  radial-gradient(1200px 800px at 70% 40%,var(--bg2),var(--bg) 70%);
+  -webkit-font-smoothing:antialiased;overflow-x:hidden;line-height:1.5}
+a{color:inherit;text-decoration:none}
+:focus-visible{outline:2px solid var(--ink);outline-offset:4px;border-radius:6px}
+#gl{position:fixed;inset:0;width:100%;height:100%;display:block;z-index:0;pointer-events:none}
+
+/* ---------- nav ---------- */
+.nav{position:fixed;top:0;left:0;right:0;z-index:10;display:flex;align-items:center;justify-content:space-between;padding:20px clamp(18px,4vw,52px) 34px;pointer-events:none;background:linear-gradient(var(--bg) 35%,rgba(230,231,233,0))}
+.nav>*{pointer-events:auto}
+.brand{font-family:var(--head);font-weight:700;font-size:20px;letter-spacing:-.03em}
+.pill{display:flex;gap:2px;padding:4px;border-radius:999px;background:rgba(255,255,255,.62);border:1px solid var(--line);backdrop-filter:blur(12px)}
+.pill a{font-size:14px;font-weight:500;padding:8px 18px;border-radius:999px;color:var(--muted);transition:background .2s,color .2s}
+.pill a:hover{color:var(--ink)}
+.pill a.on{background:var(--ink);color:#fff}
+.talk{font-size:14px;font-weight:600;padding:10px 20px;border-radius:999px;border:1px solid var(--ink);transition:background .2s,color .2s}
+.talk:hover{background:var(--ink);color:var(--bg)}
+
+/* ---------- sections ---------- */
+main{position:relative;z-index:2}
+section{position:relative;min-height:115vh;display:flex;align-items:center;padding:0 clamp(20px,6vw,96px)}
+.col{width:min(560px,100%)}
+.right{justify-content:flex-end}
+.right .col{text-align:left}
+h1,h2{font-family:var(--head);font-weight:600;letter-spacing:-.045em;line-height:.92}
+h1{font-size:clamp(3.4rem,8.2vw,8.4rem)}
+h2{font-size:clamp(2.6rem,6vw,5.8rem)}
+p.lead{margin-top:26px;max-width:28rem;font-size:clamp(16px,1.3vw,19px);color:var(--muted)}
+.stat{font-family:var(--head);font-weight:600;font-size:clamp(5rem,15vw,14rem);letter-spacing:-.06em;line-height:.8}
+.stat small{font-size:.28em;letter-spacing:-.02em;margin-left:.06em;font-weight:500}
+.cap{margin-top:18px;max-width:20rem;font-size:clamp(16px,1.3vw,19px)}
+.btn{display:inline-block;margin-top:32px;font-weight:600;font-size:15px;padding:15px 28px;border-radius:999px;background:var(--ink);color:#fff;transition:transform .2s,box-shadow .3s}
+.btn:hover{transform:translateY(-1px);box-shadow:0 0 0 7px rgba(20,21,24,.1)}
+.scrollhint{position:fixed;left:clamp(20px,6vw,96px);bottom:26px;z-index:3;font-size:13px;color:var(--muted);display:flex;gap:12px;align-items:center;transition:opacity .4s;pointer-events:none}
+.scrollhint i{display:block;width:44px;height:1px;background:var(--muted);transform-origin:left;animation:ln 2.4s ease-in-out infinite}
+@keyframes ln{0%{transform:scaleX(0)}60%{transform:scaleX(1)}100%{transform:scaleX(1);opacity:0}}
+.meta{position:fixed;right:clamp(20px,4vw,52px);bottom:26px;z-index:3;font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums;pointer-events:none}
+footer{position:relative;z-index:2;padding:30px clamp(20px,6vw,96px) 40px;font-size:13px;color:var(--muted);display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+.fallback{display:none;position:fixed;inset:0;z-index:0}
+@media(max-width:760px){
+  .pill{display:none}
+  section{align-items:flex-end;padding-bottom:12vh}
+  .right{justify-content:flex-start}
+  .meta{display:none}
+  .scrollhint{display:none}
+}
+@media(prefers-reduced-motion:reduce){.scrollhint i{animation:none}}
+</style>
+</head>
+<body>
+<canvas id="gl" aria-hidden="true"></canvas>
+
+<header class="nav">
+  <a class="brand" href="#top">many eyes</a>
+  <nav class="pill" aria-label="Main" id="pill">
+    <a href="#top" class="on">Portrait</a><a href="#numbers">Reach</a><a href="#spread">Spread</a><a href="#contact">Contact</a>
+  </nav>
+  <a class="talk" href="#contact">Start a story</a>
+</header>
+
+<main id="top">
+  <section id="hero">
+    <div class="col" data-speed="0.12">
+      <h1>Every reader starts as a face.</h1>
+      <p class="lead">We write, edit and publish stories for the people who actually read them. Scroll and watch one reader turn into a million.</p>
+    </div>
+  </section>
+
+  <section id="numbers">
+    <div class="col" data-speed="-0.1">
+      <div class="stat">1M<small>+</small></div>
+      <p class="cap">curious people open what we publish, week after week.</p>
+    </div>
+  </section>
+
+  <section id="spread">
+    <div class="col" data-speed="0.14">
+      <h2>Then it spreads.</h2>
+      <p class="lead">Good stories don't stay with one person. They get forwarded, quoted and argued over. We design for that second reader.</p>
+    </div>
+  </section>
+
+  <section id="contact" class="right">
+    <div class="col" data-speed="-0.08">
+      <h2>Tell us what you're making.</h2>
+      <p class="lead">One email is enough. We reply within two working days.</p>
+      <a class="btn" href="mailto:hello@example.com">Start a story</a>
+    </div>
+  </section>
+</main>
+<footer><span>© <span id="yr"></span> Many Eyes</span><span>Sample copy: replace with your own text.</span></footer>
+<div class="scrollhint" id="hint"><i></i><span>Scroll</span></div>
+<div class="meta" id="meta">0%</div>
+
+<script>
+(function(){
+'use strict';
+document.getElementById('yr').textContent=new Date().getFullYear();
+var canvas=document.getElementById('gl');
+var gl=canvas.getContext('webgl',{antialias:true,alpha:true,premultipliedAlpha:false});
+if(!gl){canvas.style.display='none';return;}
+var reduce=matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+/* ---------------- seeded random + helpers ---------------- */
+function rng(seed){var a=seed>>>0;var f=function(){a|=0;a=a+0x6D2B79F5|0;var t=Math.imul(a^a>>>15,1|a);t=t+Math.imul(t^t>>>7,61|t)^t;return((t^t>>>14)>>>0)/4294967296;};return f;}
+function clamp(v,a,b){return v<a?a:v>b?b:v;}
+function smooth(a,b,v){var t=clamp((v-a)/(b-a),0,1);return t*t*(3-2*t);}
+
+/* ---------------- head surface (same idea as a low-poly bust, sampled as points) ---------------- */
+var AMP=1.12;
+function bump(d,c,a,s){var l=Math.hypot(c[0],c[1],c[2]);return AMP*a*Math.exp(-s*(1-(d[0]*c[0]+d[1]*c[1]+d[2]*c[2])/l));}
+var lastR=1;
+function head(d){
+  var R=1;
+  R+=bump(d,[0,-.07,1],.40,60);R+=bump(d,[0,-.25,1],.09,120);
+  R+=bump(d,[0,.31,.95],.12,22);R+=bump(d,[.28,.30,.92],.05,50)+bump(d,[-.28,.30,.92],.05,50);
+  R+=bump(d,[.58,-.20,.80],.07,16)+bump(d,[-.58,-.20,.80],.07,16);
+  R+=bump(d,[0,-.74,.68],.15,24);R+=bump(d,[0,-.46,.89],.04,150);
+  R-=bump(d,[.36,.15,.92],.15,95)+bump(d,[-.36,.15,.92],.15,95);
+  R-=bump(d,[0,-.40,.91],.06,140);
+  R+=bump(d,[1,.02,-.12],.13,26)+bump(d,[-1,.02,-.12],.13,26);
+  R+=bump(d,[0,-.95,.1],.12,10);                                /* neck */
+  lastR=R;
+  return [d[0]*R*.80,d[1]*R*1.07,d[2]*R*.93];
+}
+function norm(v){var l=Math.hypot(v[0],v[1],v[2])||1;return[v[0]/l,v[1]/l,v[2]/l];}
+function cross(a,b){return[a[1]*b[2]-a[2]*b[1],a[2]*b[0]-a[0]*b[2],a[0]*b[1]-a[1]*b[0]];}
+function sub(a,b){return[a[0]-b[0],a[1]-b[1],a[2]-b[2]];}
+
+/* ---------------- build point cloud ---------------- */
+var N=72000, R=rng(2024);
+var aN=new Float32Array(N*3), aHead=new Float32Array(N*3), aFib=new Float32Array(N*3), aR=new Float32Array(N*4), aS=new Float32Array(N);
+var LIGHT=norm([-.5,.6,.62]);
+
+/* fibre strands */
+var NS=120, strands=[];
+(function(){
+  var r=rng(99);
+  for(var s=0;s<NS;s++){
+    var ang=.50+(r()-.5)*.62;
+    strands.push({
+      ox:-2.9+r()*1.1, oy:-2.0+r()*1.1, oz:(r()-.5)*1.4,
+      dx:Math.cos(ang), dy:Math.sin(ang),
+      len:4.4+r()*2.4, bow:(r()-.5)*.7, w:.012+r()*.05, ph:r()*6.28, rand:r()
+    });
+  }
+})();
+function strandAt(S,t,off){
+  var bow=Math.sin(t*Math.PI)*S.bow;
+  var px=-S.dy, py=S.dx;                                            /* perpendicular */
+  return[S.ox+S.dx*S.len*t+px*(bow+off), S.oy+S.dy*S.len*t+py*(bow+off), S.oz+Math.sin(t*3+S.ph)*.06];
+}
+
+for(var i=0;i<N;i++){
+  /* fibonacci direction */
+  var d;
+  if(i%2===0){var k=(i/2+.5)/(N/2), phi=Math.acos(1-2*k), th=Math.PI*(1+Math.sqrt(5))*(i/2);
+    d=[Math.sin(phi)*Math.cos(th),Math.cos(phi),Math.sin(phi)*Math.sin(th)];}
+  else{var zc=.15+.85*Math.sqrt(R()), rc=Math.sqrt(1-zc*zc), ac=R()*6.2832;   /* front cap, denser on the face */
+    d=[rc*Math.cos(ac),rc*Math.sin(ac),zc];}
+  /* keep the head mostly in front: rotate sphere so poles face up, front is +z */
+  var P=head(d), occ=clamp(1+(lastR-1)*8,.06,1);
+  /* normal by finite difference */
+  var e1=norm(cross(d,[0,1,0.0001])), e2=norm(cross(d,e1)), eps=.012;
+  var P1=head(norm([d[0]+e1[0]*eps,d[1]+e1[1]*eps,d[2]+e1[2]*eps])), P2=head(norm([d[0]+e2[0]*eps,d[1]+e2[1]*eps,d[2]+e2[2]*eps]));
+  var n=norm(cross(sub(P1,P),sub(P2,P)));if(n[0]*P[0]+n[1]*P[1]+n[2]*P[2]<0)n=[-n[0],-n[1],-n[2]];
+  var shade=clamp(n[0]*LIGHT[0]+n[1]*LIGHT[1]+n[2]*LIGHT[2],0,1);
+  shade=clamp((.02+Math.pow(shade,1.5)*1.0)*occ,0,1);
+  /* hair: top and back of the skull, grown outward with curls */
+  var hairV=d[1]*.9-d[2]*.5, isHair=(hairV>.00||(d[2]<-.15&&d[1]>-.25))?1:0;
+  if(isHair){
+    var curl=Math.sin(d[0]*17+d[1]*9)*Math.cos(d[2]*13)*.5+.5;
+    var grow=1+.10+R()*.20+curl*.10;
+    P=[P[0]*grow+(R()-.5)*.05,P[1]*grow+(R()-.5)*.05,P[2]*grow+(R()-.5)*.05];
+    shade=.04+R()*.22;
+  }
+  var nn=isHair?d:n;aN[i*3]=nn[0];aN[i*3+1]=nn[1];aN[i*3+2]=nn[2];
+  aHead[i*3]=P[0]*.82;aHead[i*3+1]=P[1]*.82-.05;aHead[i*3+2]=P[2]*.82;
+  /* fibre target */
+  var s=i%NS, S=strands[s], t=R();
+  var q=strandAt(S,t,(R()-.5)*S.w);
+  aFib[i*3]=q[0];aFib[i*3+1]=q[1];aFib[i*3+2]=q[2]+(R()-.5)*.03;
+  aR[i*4]=R();                              /* dissolve delay */
+  aR[i*4+1]=isHair?(1.6+R()*1.0):(1.05+R()*.7); /* size */
+  aR[i*4+2]=shade;                          /* tone */
+  aR[i*4+3]=isHair;
+  aS[i]=S.rand;
+}
+
+/* polyline segments for the glassy strands */
+var SEG=44, lineP=[], lineS=[], lineT=[];
+strands.forEach(function(S){
+  for(var j=0;j<SEG;j++){
+    var a=strandAt(S,j/SEG,0), b=strandAt(S,(j+1)/SEG,0);
+    lineP.push(a[0],a[1],a[2],b[0],b[1],b[2]);lineS.push(S.rand,S.rand);lineT.push(j/SEG,(j+1)/SEG);
+  }
+});
+var lineCount=lineP.length/3;
+
+/* ---------------- shaders ---------------- */
+var COMMON=
+'precision highp float;\n'+
+'uniform mat4 uProj,uView;\n'+
+'uniform float uP,uYaw,uPitch,uDpr,uTime,uPass,uScale;\n'+
+'uniform vec3 uOff;\n'+
+'mat3 rotY(float a){float c=cos(a),s=sin(a);return mat3(c,0.,-s, 0.,1.,0., s,0.,c);}\n'+
+'mat3 rotX(float a){float c=cos(a),s=sin(a);return mat3(1.,0.,0., 0.,c,s, 0.,-s,c);}\n'+
+'float hash(float n){return fract(sin(n*91.345)*47453.5453);}\n'+
+'vec3 fibShift(vec3 f,float srand){return f+vec3(1.1,.62,0.)*(uP-.55)*(.35+srand*1.3);}\n';
+
+var VS_P=COMMON+
+'attribute vec3 aHead;attribute vec3 aFib;attribute vec4 aR;attribute float aS;attribute vec3 aN;\n'+
+'varying vec4 vC;\n'+
+'void main(){\n'+
+' vec3 h=rotY(uYaw)*rotX(uPitch)*aHead*uScale+uOff;\n'+
+' float e=smoothstep(0.,1.,clamp((uP-.34-aR.x*.22)/.30,0.,1.));\n'+
+' vec3 dr=vec3(hash(aR.x*13.),hash(aR.x*7.+1.),hash(aR.x*3.+2.))-.5;\n'+
+' vec3 pos=mix(h,fibShift(aFib,aS),e)+dr*2.4*sin(e*3.14159);\n'+
+' pos+=vec3(sin(uTime*.6+aR.x*30.),cos(uTime*.5+aR.x*20.),0.)*.006;\n'+
+' vec4 v=uView*vec4(pos,1.);\n'+
+' gl_Position=uProj*v;\n'+
+' float sz=aR.y*uDpr*(5.2/-v.z)*mix(1.,2.1,e);\n'+
+' vec3 skin=vec3(mix(.0,.30,aR.z));\n'+
+' vec3 col=mix(skin,vec3(.99),e);\n'+
+' float facing=(rotY(uYaw)*rotX(uPitch)*aN).z;\n'+
+' float vis=mix(smoothstep(-.08,.16,facing),1.,e);\n'+
+' float keepP=.16+.84*pow(1.-aR.z,.9);\n'+
+' float kept=mix(step(fract(aR.x*91.7+.31),keepP),1.,max(e,aR.w));\n'+
+' float a=mix(.95,.9,e)*vis*kept;\n'+
+' if(uPass>.5){gl_Position.xy+=vec2(.004,-.006)*gl_Position.w;col=vec3(.1);a=.16*e;sz*=1.25;}\n'+
+' gl_PointSize=sz;vC=vec4(col,a);}\n';
+var FS_P='precision mediump float;varying vec4 vC;\n'+
+'void main(){float d=length(gl_PointCoord-.5);if(d>.5)discard;gl_FragColor=vec4(vC.rgb,vC.a*smoothstep(.5,.28,d));}\n';
+
+var VS_L=COMMON+
+'attribute vec3 aP;attribute float aSr;attribute float aT;\n'+
+'varying vec4 vC;\n'+
+'void main(){\n'+
+' vec3 pos=fibShift(aP,aSr);\n'+
+' vec4 v=uView*vec4(pos,1.);gl_Position=uProj*v;\n'+
+' float on=smoothstep(.55,.86,uP);\n'+
+' float fade=smoothstep(0.,.12,aT)*smoothstep(1.,.86,aT);\n'+
+' vec3 col=vec3(.99);float a=.55*on*fade;\n'+
+' if(uPass>.5){gl_Position.xy+=vec2(.004,-.006)*gl_Position.w;col=vec3(.1);a=.12*on*fade;}\n'+
+' vC=vec4(col,a);}\n';
+var FS_L='precision mediump float;varying vec4 vC;void main(){gl_FragColor=vC;}\n';
+
+function mk(vs,fs){
+  function sh(t,s){var o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))throw new Error(gl.getShaderInfoLog(o));return o;}
+  var p=gl.createProgram();gl.attachShader(p,sh(gl.VERTEX_SHADER,vs));gl.attachShader(p,sh(gl.FRAGMENT_SHADER,fs));gl.linkProgram(p);
+  if(!gl.getProgramParameter(p,gl.LINK_STATUS))throw new Error(gl.getProgramInfoLog(p));return p;
+}
+var pP=mk(VS_P,FS_P), pL=mk(VS_L,FS_L);
+function buf(data){var b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.bufferData(gl.ARRAY_BUFFER,data,gl.STATIC_DRAW);return b;}
+var bN=buf(aN),bHead=buf(aHead),bFib=buf(aFib),bR=buf(aR),bS=buf(aS);
+var bLP=buf(new Float32Array(lineP)),bLS=buf(new Float32Array(lineS)),bLT=buf(new Float32Array(lineT));
+function uni(p,names){var o={};names.forEach(function(n){o[n]=gl.getUniformLocation(p,n);});return o;}
+var UN=['uProj','uView','uP','uYaw','uPitch','uDpr','uTime','uPass','uOff','uScale'];
+var uPt=uni(pP,UN), uLn=uni(pL,UN);
+function attr(p,name,b,size){var l=gl.getAttribLocation(p,name);gl.bindBuffer(gl.ARRAY_BUFFER,b);gl.enableVertexAttribArray(l);gl.vertexAttribPointer(l,size,gl.FLOAT,false,0,0);return l;}
+
+gl.disable(gl.DEPTH_TEST);gl.enable(gl.BLEND);gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);gl.clearColor(0,0,0,0);
+
+/* ---------------- matrices ---------------- */
+var CAM=5.2,FOV=30*Math.PI/180;
+function persp(f,a,n,fr){var t=1/Math.tan(f/2);return new Float32Array([t/a,0,0,0, 0,t,0,0, 0,0,(fr+n)/(n-fr),-1, 0,0,2*fr*n/(n-fr),0]);}
+var view=new Float32Array([1,0,0,0, 0,1,0,0, 0,0,1,0, 0,0,-CAM,1]);
+
+/* ---------------- state ---------------- */
+var W=0,H=0,DPR=1,asp=1;
+function resize(){DPR=Math.min(devicePixelRatio||1,2);W=innerWidth;H=innerHeight;asp=W/H;canvas.width=Math.round(W*DPR);canvas.height=Math.round(H*DPR);gl.viewport(0,0,canvas.width,canvas.height);}
+addEventListener('resize',resize);resize();
+
+var target=0,p=0,mx=0,my=0,tmx=0,tmy=0,t0=performance.now();
+function maxScroll(){return Math.max(1,document.documentElement.scrollHeight-innerHeight);}
+function readScroll(){target=clamp(scrollY/maxScroll(),0,1);}
+addEventListener('scroll',readScroll,{passive:true});readScroll();
+addEventListener('pointermove',function(e){tmx=e.clientX/W*2-1;tmy=e.clientY/H*2-1;},{passive:true});
+
+var parEls=[].slice.call(document.querySelectorAll('[data-speed]'));
+var hint=document.getElementById('hint'),meta=document.getElementById('meta');
+var links=[].slice.call(document.querySelectorAll('#pill a')), secs=['top','numbers','spread','contact'].map(function(id){return document.getElementById(id==='top'?'hero':id);});
+
+var HEADSCALE=1;
+function setUni(U,off){
+  gl.uniform1f(U.uScale,HEADSCALE);
+  gl.uniformMatrix4fv(U.uProj,false,persp(FOV,asp,.1,60));gl.uniformMatrix4fv(U.uView,false,view);
+  gl.uniform1f(U.uP,p);gl.uniform1f(U.uDpr,DPR);gl.uniform1f(U.uTime,(performance.now()-t0)/1000*(reduce?.2:1));
+  gl.uniform3f(U.uOff,off[0],off[1],off[2]);
+}
+function frame(){
+  p+=(target-p)*.08;if(Math.abs(target-p)<.0003)p=target;
+  mx+=(tmx-mx)*.05;my+=(tmy-my)*.05;
+
+  var halfH=CAM*Math.tan(FOV/2),halfW=halfH*asp;
+  var wide=asp>1.1;
+  var off=wide?[halfW*.42,-.02,0]:[0,halfH*.42,0];
+  HEADSCALE=wide?1:Math.max(.4,Math.min(.8,halfW*.85/.95));
+  var yaw=-.28+smooth(.04,.30,p)*1.55+mx*.18, pitch=my*.10-smooth(.04,.3,p)*.05;
+  var sc=wide?1:.85;
+
+  gl.clear(gl.COLOR_BUFFER_BIT);
+  /* shadow pass then main pass, for points and lines */
+  for(var pass=0;pass<2;pass++){
+    gl.useProgram(pP);setUni(uPt,off);gl.uniform1f(uPt.uYaw,yaw);gl.uniform1f(uPt.uPitch,pitch);gl.uniform1f(uPt.uPass,pass);
+    attr(pP,'aHead',bHead,3);attr(pP,'aFib',bFib,3);attr(pP,'aR',bR,4);attr(pP,'aS',bS,1);attr(pP,'aN',bN,3);
+    gl.drawArrays(gl.POINTS,0,N);
+    if(p>.5){
+      gl.useProgram(pL);setUni(uLn,off);gl.uniform1f(uLn.uYaw,0);gl.uniform1f(uLn.uPitch,0);gl.uniform1f(uLn.uPass,pass);
+      attr(pL,'aP',bLP,3);attr(pL,'aSr',bLS,1);attr(pL,'aT',bLT,1);
+      gl.drawArrays(gl.LINES,0,lineCount);
+    }
+  }
+
+  /* parallax copy */
+  for(var i=0;i<parEls.length;i++){
+    var el=parEls[i],sp=parseFloat(el.getAttribute('data-speed')),r=el.parentElement.getBoundingClientRect();
+    var c=(r.top+r.height/2)-H/2;el.style.transform='translate3d(0,'+(c*sp*-1).toFixed(1)+'px,0)';
+  }
+  hint.style.opacity=(1-smooth(0,.03,p)).toFixed(2);
+  meta.textContent=Math.round(p*100)+'%';
+  var bgm=smooth(.5,.9,p),mixc=function(a,b){return Math.round(a+(b-a)*bgm);};
+  document.documentElement.style.setProperty('--bg','rgb('+mixc(230,198)+','+mixc(231,201)+','+mixc(233,208)+')');
+  document.documentElement.style.setProperty('--bg2','rgb('+mixc(244,224)+','+mixc(244,226)+','+mixc(245,230)+')');
+  var cur=0;secs.forEach(function(s,ix){if(s&&s.getBoundingClientRect().top<H*.5)cur=ix;});
+  links.forEach(function(a,ix){a.classList.toggle('on',ix===cur);});
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+window.__p={set:function(v){target=v;p=v;scrollTo(0,v*maxScroll());}};
+})();
+</script>
+</body>
+</html>
